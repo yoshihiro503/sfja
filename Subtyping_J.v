@@ -778,6 +778,12 @@ Inductive step : tm -> tm -> Prop :=
   | ST_If : forall t1 t1' t2 t3,
       t1 ==> t1' ->
       (tm_if t1 t2 t3) ==> (tm_if t1' t2 t3)
+(*
+                             ------------------                     (ST_Funny21)
+                             unit ==> (\x:Top. x)
+*)
+  | ST_Funny21 : forall x,
+      tm_unit ==> (tm_abs x ty_Top (tm_var x))
 where "t1 '==>' t2" := (step t1 t2).
 
 Tactic Notation "step_cases" tactic(first) ident(c) :=
@@ -785,6 +791,7 @@ Tactic Notation "step_cases" tactic(first) ident(c) :=
   [ Case_aux c "ST_AppAbs" | Case_aux c "ST_App1"
   | Case_aux c "ST_App2" | Case_aux c "ST_IfTrue"
   | Case_aux c "ST_IfFalse" | Case_aux c "ST_If"
+  | Case_aux c "ST_Funny21"
   ].
 
 Hint Constructors step.
@@ -1414,6 +1421,15 @@ Proof with auto.
   remember ty_Bool as V.
   (* FILL IN HERE *) Admitted.
 
+Lemma sub_inversion_Unit : forall U, subtype U ty_Unit -> U = ty_Unit.
+Proof with auto.
+  intros U Hs.
+ remember ty_Unit as V.
+  (* ここから *)
+  subtype_cases (induction Hs) Case; try discriminate...
+  - Case "S_Trans". subst. rewrite IHHs1; now auto.
+Qed.
+
 (* **** Exercise: 3 stars, optional (sub_inversion_arrow) *)
 (** **** 練習問題: ★★★, optional (sub_inversion_arrow) *)
 Lemma sub_inversion_arrow : forall U V1 V2,
@@ -1617,7 +1633,7 @@ Proof with eauto.
   remember empty as Gamma.
   revert HeqGamma.
   has_type_cases (induction Ht) Case;
-    intros HeqGamma; subst...
+    intros HeqGamma; subst; try (left; constructor).
   Case "T_Var".
     inversion H.
   Case "T_App".
@@ -1641,6 +1657,7 @@ Proof with eauto.
         by (eapply canonical_forms_of_Bool; eauto).
       inversion H0; subst...
       destruct H. rename x into t1'. eauto.
+  Case "T_Sub"...
 
 Qed.
 
@@ -2078,21 +2095,22 @@ Qed.
        型[S]が存在して [S <: T] かつ [empty |- t : S] となる。
        型付け導出についての帰納法の仮定と[T_Sub]の適用から結果がすぐに得られる。 [] *)
 
-Theorem preservation : forall t t' T,
+Theorem neg_preservation : ~ (forall t t' T,
      has_type empty t T  ->
      t ==> t'  ->
-     has_type empty t' T.
+     has_type empty t' T).
 Proof with eauto.
-  intros t t' T HT.
-  remember empty as Gamma. generalize dependent HeqGamma.
-  generalize dependent t'.
-  has_type_cases (induction HT) Case;
-    intros t' HeqGamma HE; subst; inversion HE; subst...
-  Case "T_App".
-    inversion HE; subst...
-    SCase "ST_AppAbs".
-      destruct (abs_arrow _ _ _ _ _ HT1) as [HA1 HA2].
-      apply substitution_preserves_typing with T...
+ intro.
+ remember Examples.x as x.
+ assert (~ has_type empty (tm_abs x ty_Top (tm_var x)) ty_Unit).
+ - intros WT.
+   remember (tm_abs x ty_Top (tm_var x)) as t'.
+   remember ty_Unit as T.
+   has_type_cases (induction WT) Case; try discriminate.
+   + Case "T_Sub".
+     subst. rewrite (sub_inversion_Unit S H0) in IHWT.
+     now apply IHWT.
+ - elim H0. now apply H with tm_unit.
 Qed.
 
 (* ###################################################### *)
