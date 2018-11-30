@@ -579,14 +579,26 @@ Proof with eauto.
 
 (* **** Exercise: 3 stars (canonical_forms_of_arrow_types) *)
 (** **** 練習問題: ★★★ (canonical_forms_of_arrow_types) *)
-Lemma canonical_forms_of_arrow_types : forall Gamma s T1 T2,
+Lemma canonical_forms_of_arrow_types : forall Gamma s T1 T2, (*yoshihiro503*)
      has_type Gamma s (ty_arrow T1 T2) ->
      value s ->
      exists x, exists S1, exists s2,
         s = tm_abs x S1 s2.
 Proof with eauto.
-  (* FILL IN HERE *) Admitted.
-(** [] *)
+  intros Gamma s T1 T2 WT Vs.
+  remember (ty_arrow T1 T2) as T.
+  generalize dependent T2. generalize dependent T1.
+  induction WT.
+  - now inversion Vs.
+  - intros _ _ _. now exists x, T11, t12.
+  - now inversion Vs.
+  - now inversion Vs.
+  - intros T1 T2 Tarrow. subst T.
+    destruct (sub_inversion_arrow S T1 T2 H) as [U1 [U2 [Sarrow [Sub1 Sub2]]]].
+    now apply (IHWT Vs U1 U2 Sarrow).
+  - now inversion Vs.
+  - now inversion Vs.
+Qed.
 
 Theorem progress : forall t T,
      has_type empty t T ->
