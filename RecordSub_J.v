@@ -189,8 +189,16 @@ Inductive subtype : ty -> ty -> Prop :=
   | S_Top : forall S,
     well_formed_ty S ->
     subtype S ty_Top
-  | S_Arrow : forall S1 S2 T1 T2,
-    subtype T1 S1 ->
+  | S_Arrow' : forall S1 S2 T1 T2,
+      (*
+    - 関数型についてのサブタイプ規則を次のものに変更する:
+[[
+                          S1 <: T1       S2 <: T2
+                          -----------------------                    (S_Arrow')
+                               S1->S2 <: T1->T2
+]]
+       *)
+    subtype S1 T1 ->
     subtype S2 T2 ->
     subtype (ty_arrow S1 S2) (ty_arrow T1 T2)
   (* Subtyping between record types *)
@@ -243,7 +251,7 @@ Example subtyping_example_0 :
           (ty_arrow C ty_rnil).
 (* C->{k:A->A,j:B->B} <: C->{} *)
 Proof.
-  apply S_Arrow.
+  apply S_Arrow'.
     apply S_Refl. auto.
     unfold ty_rcd_kj, ty_rcd_j. apply S_RcdWidth; auto.
 Qed.
@@ -397,7 +405,7 @@ Proof with (eauto using wf_rcd_lookup).
 Lemma sub_inversion_arrow : forall U V1 V2,
      subtype U (ty_arrow V1 V2) ->
      exists U1, exists U2,
-       (U=(ty_arrow U1 U2)) /\ (subtype V1 U1) /\ (subtype U2 V2).
+       (U=(ty_arrow U1 U2)) /\ (subtype U1 V1) /\ (subtype U2 V2).
 Proof with eauto.
   intros U V1 V2 Hs.
   remember (ty_arrow V1 V2) as V.
