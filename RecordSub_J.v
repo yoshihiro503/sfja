@@ -761,6 +761,56 @@ Proof with eauto.
           - そうではないとき、[tr]も値である。すると、[v_rcons]から [{i=t1, tr}] は値である。
 *)
 
+Notation user := (Id 0).
+Notation name := (Id 100).
+
+Notation "{}" := tm_rnil.
+Definition Name := ty_base (Id 333).
+
+Infix "#" := tm_proj (at level 150).
+
+(* 練習問題: 保存が成り立たないことの証明 yoshihiro503 *)
+Theorem neg_preservation : exists t t' T,
+     has_type empty t T
+     /\ t ==> t'
+     /\ ~ has_type empty t' T.
+Proof.
+  (* 反例として t=((λr. r#name) {}) を上げる。
+     tは {name}<:{} からWell typedだが、 t'は {}#name となり型付け不能
+   *)
+  exists (tm_app (tm_abs user (ty_rcons name Name ty_rnil) ((tm_var user) # name)) tm_rnil).
+  exists (tm_proj tm_rnil name).
+  exists Name.
+  split; [| split].
+  - (*t : Tとなることを示す*)
+    apply T_App with ty_rnil; [| now apply T_RNil].
+    apply T_Sub with (ty_arrow (ty_rcons name Name ty_rnil) Name).
+    + (* Absの型付け *)
+      apply T_Abs; [now repeat constructor|].
+      apply T_Proj with (ty_rcons name Name ty_rnil); [| now simpl].
+      apply T_Var; [now unfold extend | now repeat constructor].
+    + (* subtypingの証明: ここがヤバイポイント *)
+      apply S_Arrow'.
+      * (* {name: ty_name} <: {} *)
+        apply S_RcdWidth.
+        now repeat constructor.
+      * (* ty_name <: ty_name *)
+        apply S_Refl.
+        now repeat constructor.
+  - (* t ==> t' *)
+    now apply ST_AppAbs.
+  - (* t' が型付け不可能 *)
+    intro.
+    remember empty as Gamma.
+    remember ({} # name) as t.
+    induction H; subst Gamma; try discriminate Heqt.
+    + (* T_Proj のとき *)
+      injection Heqt. intros Heq1 Heq2. subst i t.
+      now destruct (lookup_field_in_value {} T name Ti) as [x [Hlookup Hty]].
+    + (* T_Sub のとき *)
+      now apply IHhas_type.
+Qed.
+
 (* ########################################## *)
 (* *** Inversion Lemmas *)
 (** *** 反転補題 *)
